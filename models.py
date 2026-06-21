@@ -103,6 +103,14 @@ class Graph:
             return 2
         return 1
     
+    def validate_start_end_exist(self):
+        if self.start_name is None:
+            raise ValueError("Missing start_hub")
+
+        if self.end_name is None:
+            raise ValueError("Missing end_hub")
+
+    
 
 
         
