@@ -14,6 +14,7 @@ class MapParser():
 
     def parse_map(self, map_path: str) -> None:
         """Parse config from map"""
+        first_line_checked: bool = False
         try:
             with open(map_path, "r") as file:
                 for line_number, raw_line in enumerate(file, 1):
@@ -21,11 +22,15 @@ class MapParser():
 
                     if not line:
                         continue
-
-                    if line.startswith("nb_drones:"):
-                        self.parse_first_line(line)
-                    else:
-                        raise ParseError("No. of drones not declared! First meaningful line must be nb_drones")
+                    
+                    if not first_line_checked:
+                        if not line.startswith("nb_drones:"):
+                            raise ParseError("No. of drones not declared! First meaningful line must be nb_drones")
+                        self.parse_first_line(line, line_number)
+                        first_line_checked = True
+                        continue
+                    
+                        
 
                     if line.startswith("start_hub:"):
                         zone = self.parse_zone_line(line)
@@ -54,12 +59,12 @@ class MapParser():
     def clean_line(self, raw_line: str):
         return raw_line.split("#", 1)[0].strip()
 
-    def parse_first_line(self, line:str):
+    def parse_first_line(self, line:str, line_number):
         
-        try: 
-            nb_drones: int = int(line.strip().split(": ")[1])
-        except ValueError as err:
-            print(f"Invalid number of drones: {nb_drones}. Expected an integer!")
+        try:
+            self.nb_drones: int = int(line.strip().split(": ")[1])
+        except ValueError:
+            raise ValueError(f"Invalid number of drones: {nb_drones}. Expected integer in line {line_number}")
         
     def parse_zone_line(self, line: str):
         zone_data: dict = {}

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from collections import defaultdict
-from pydantic import Basemodel, model_validator
+from pydantic import BaseModel, ConfigDict
 
 
 class ZoneType(Enum):
@@ -10,20 +10,17 @@ class ZoneType(Enum):
     BLOCKED = "blocked" #inaccessible zone type
     PRIORITY = "priority" #preferred zone. cost 1 turns
 
-
-@dataclass(frozen = True)
-class Zone(Basemodel):
+class Zone(BaseModel):
     """Zone class stores zone details. Once object is created the credentials cannot be changed(frozen!)"""
+    model_config = ConfigDict(frozen=True)
+
     name: str
     x_coordinate: int
     y_coordinate: int
     zone: ZoneType = ZoneType.NORMAL
     color: str | None = None
     max_drones: int = 1 
-    
 
-
-@dataclass
 class Drone:
     """
     Drone object keep drone datasets. 
@@ -36,9 +33,10 @@ class Drone:
     assigned_path: list = field(default_factory=list)
 
 
-@dataclass(frozen = True)
-class Connections(Basemodel):
+class Connections(BaseModel):
     """Connection class stores capacity and which two zons are connected. Once object is created the credentials cannot be changed(frozen!)"""
+    model_config = ConfigDict(frozen=True)
+
     max_link_capacity: int 
     zone_1: str
     zone_2: str
@@ -98,24 +96,15 @@ class Graph:
     
     def movement_cost(self, destination_name: str) -> int:
         destination: Zone = self.all_zones[destination_name]
-        if destination.zone_type == ZoneType.BLOCKED:
+        if destination.zone == ZoneType.BLOCKED:
             raise ValueError(f"Cannot move into the blocked zone: {destination_name}")
-        if destination.zone_type == ZoneType.RESTRICTED:
+        if destination.zone == ZoneType.RESTRICTED:
             return 2
         return 1
     
     def validate_start_end_exist(self):
-        if self.start_name is None:
+        if self.start_zone is None:
             raise ValueError("Missing start_hub")
 
-        if self.end_name is None:
+        if self.end_zone is None:
             raise ValueError("Missing end_hub")
-
-    
-
-
-        
-        
-
-        
-
