@@ -1,88 +1,87 @@
 from models import Graph, Zone, Connections, ZoneType
-
+from dataclasses import dataclass
+from typing import List
 
 class ParseError(Exception):
     """Custom Exception for parse error"""
     pass
 
-class ParseMap():
+
+class MapParser():
     def __init__(self) -> None:
         self.graph = Graph()
         self.nb_drones: int | None = None
-        self.first_meaningful_line_seen = False
 
     def parse_map(self, map_path: str) -> None:
         """Parse config from map"""
-        raw_data:dict = {}
-
         try:
-            with open(map_path, "r") as f:
-                for line_number, line in enumerate(f, 1):
-                    if not line or line.startswith("#"):
+            with open(map_path, "r") as file:
+                for line_number, raw_line in enumerate(file, 1):
+                    line:str = self.clean_line(raw_line)
+
+                    if not line:
                         continue
-                    if not self.first_meaningful_line_seen:
-                        if not line.startswith("nb_drones:"):
-                            raise ParseError("No. of drones not declared! First meaningful line must be nb_drones")
-                    
+
                     if line.startswith("nb_drones:"):
-                        nb_drones: list = line.split(":")
-                        self.nb_drones = int(nb_drones[1].strip())
-                        self.first_meaningful_line_seen = True
+                        self.parse_first_line(line)
+                    else:
+                        raise ParseError("No. of drones not declared! First meaningful line must be nb_drones")
 
                     if line.startswith("start_hub:"):
-                        start_zone: str = line.split("[")[0]
-                        metadata: str = line.split("[")[1]
-                        self.graph.add_zone(self.parse_zone_metadata(start_zone, metadata))
+                        zone = self.parse_zone_line(line)
+                        self.graph.add_zone(zone, is_start=True)
+
+                    elif line.startswith("hub:"):
+                        zone = self.parse_zone_line(line)
+                        self.graph.add_zone(zone)
                     
-                    if line.startswith("hub:"):
-                        zone: str = line.split("[")[0]
-                        metadata: str = line.split("[")[1]
-                        self.graph.add_zone(self.parse_zone_metadata(zone, metadata))
+                    elif line.startswith("end_hub:"):
+                        zone = self.parse_zone_line(line)
+                        self.graph.add_zone(zone, is_end=True)
                     
-                    if line.startswith("end_hub:"):
-                        end_zone: str = line.split("[")[0]
-                        metadata: str = line.split("[")[1]
-                        self.graph.add_zone(self.parse_zone_metadata(end_zone, metadata))
+                    elif line.startswith("connection:"):
+                        connection = self.parse_connection(line)
+                        self.graph.add_connection(connection)
                     
-                    if line.startswith("connection:"):
-                        line = line.strip(" ]")
-                        connection: str = line.split("[")[0].strip()
-                        zone_1: str = connection.split("-")[0]
-                        zone_2: str = connection.split("-")[1]
-                        max_link_capacity = line.split("[")[1]
-                        self.graph.add_connection(Connections(max_link_capacity, zone_1, zone_2))
+                    else:
+                        raise ParseError(f"Line {line_number}: unknown line type")
+
         except FileNotFoundError as err:
             print(f"File nor found!: {err}")
-
-    def parse_zone_metadata(self, splitted_string: str, metadata: str) -> Zone:
-        splitted_string = splitted_string.strip()
-        splitted_string = splitted_string.split(" ")
-
-        metadata = metadata.strip(" ]")
-        metadata = metadata.split(" ")
-        metadata_dict: dict = {}
         
-        for metadatas in metadata:
-            metadata_dict[metadatas.split("=")[0]] = metadatas.split("=")[1]
+        return self.graph
 
+    def clean_line(self, raw_line: str):
+        return raw_line.split("#", 1)[0].strip()
 
-        data: dict = {}
-        data["name"] = splitted_string[1]
-        data["x_coordinate"] = int(splitted_string[2])
-        data["y_coordinate"] = int(splitted_string[3])
-        if "zone" in metadata_dict:
-            try:
-                data["zone_type"] = ZoneType.metadata_dict["zone"].upper()
-            except AttributeError as err:
-                print("Invalid zone type!")
-        if "color" in metadata_dict:
-            data["color"] = metadata_dict["color"]
-        if "max_drones" in metadata_dict:
-            data["max_drones"] = metadata_dict["max_drones"]
+    def parse_first_line(self, line:str):
         
-        return Zone(**metadata_dict)
+        try: 
+            nb_drones: int = int(line.strip().split(": ")[1])
+        except ValueError as err:
+            print(f"Invalid number of drones: {nb_drones}. Expected an integer!")
+        
+    def parse_zone_line(self, line: str):
+        zone_data: dict = {}
+        if "[" in line:
+            metadata: str = line.strip().split("[")[1]
+            metadata: List[str] = metadata.strip("]").split(" ")
+            for something in metadata:
+                zone_data[something.split("=")[0]] = something.split("=")[1]
+        line: str = line.strip().split(": ", 1)[1].split(" ")
+        zone_data['name'] = line[0]
+        zone_data['x_coordinate'] = line[1]
+        zone_data['y_coordinate'] = line[2]
+        return Zone(**zone_data)
 
-
-def parse_map(path: str) -> None:
-    parser = MapParser()
-    return parser.graph
+    def parse_connection(self, line: str):
+        connection_data = {}
+        if "[" in line:
+            metadata: str = line.strip().split("[")[1]
+            metadata = metadata.strip("]")
+            connection_data[metadata.split("=")[0]] = metadata.split("=")[1]
+        
+        line = line.strip().split(" ",2)[1]
+        connection_data['zone_1'] = line.split("-")[0]
+        connection_data['zone_2'] = line.split("-")[1]
+        return Connections(**connection_data)

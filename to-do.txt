@@ -1,0 +1,1 @@
+Need to apply pydantic validators in model.py for Zone class so that recieving invalid value to raise error
