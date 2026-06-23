@@ -21,6 +21,8 @@ class Zone(BaseModel):
     color: str | None = None
     max_drones: int = 1 
 
+
+@dataclass
 class Drone:
     """
     Drone object keep drone datasets. 
@@ -37,7 +39,7 @@ class Connections(BaseModel):
     """Connection class stores capacity and which two zons are connected. Once object is created the credentials cannot be changed(frozen!)"""
     model_config = ConfigDict(frozen=True)
 
-    max_link_capacity: int 
+    max_link_capacity: int = 1
     zone_1: str
     zone_2: str
 

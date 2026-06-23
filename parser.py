@@ -53,18 +53,29 @@ class MapParser():
 
         except FileNotFoundError as err:
             print(f"File nor found!: {err}")
-        
+        self.graph.validate_start_end_exist()
         return self.graph
+        
 
     def clean_line(self, raw_line: str):
         return raw_line.split("#", 1)[0].strip()
 
     def parse_first_line(self, line:str, line_number):
-        
+        value = line.split(":", 1)[1].strip()
+
         try:
-            self.nb_drones: int = int(line.strip().split(": ")[1])
-        except ValueError:
-            raise ValueError(f"Invalid number of drones: {nb_drones}. Expected integer in line {line_number}")
+            nb_drones = int(value)
+        except ValueError as error:
+            raise ParseError(
+                f"Line {line_number}: nb_drones must be an integer"
+            ) from error
+
+        if nb_drones <= 0:
+            raise ParseError(
+                f"Line {line_number}: nb_drones must be more than 0"
+            )
+        self.nb_drones = nb_drones
+        
         
     def parse_zone_line(self, line: str):
         zone_data: dict = {}
