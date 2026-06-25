@@ -8,6 +8,7 @@ class PathFinder:
         self.graph = graph
     
     def find_shortest_path(self) -> list[str]:
+        self.graph.validate_start_end_exist()
         start: str = self.graph.start_zone
         end: str = self.graph.end_zone
 
@@ -26,6 +27,7 @@ class PathFinder:
                     visited.add(neighbor)
                     previous[neighbor] = current_zone
                     queue.append(neighbor)
+        raise ValueError("No path found!")
     
     def rebuild_path(self, previous: dict[str, str | None], end: str) -> str:
         path: list[str] = []
