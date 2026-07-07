@@ -72,12 +72,16 @@ class PathFinder:
         raise ValueError("No Path Found!") 
 
 
+    def find_multiple_paths(max_paths):
+        ...
+
+
     def rebuild_path(self, previous: dict[str, str | None], end: str) -> str:
         path: list[str] = []
-        current_zone: str | None = end
+        wokring_zone: str | None = end
         
-        while current_zone is not None:
-            path.append(current_zone)
-            current_zone = previous[current_zone]
+        while wokring_zone is not None:
+            path.append(wokring_zone)
+            wokring_zone = previous[wokring_zone]
         path.reverse()
         return path

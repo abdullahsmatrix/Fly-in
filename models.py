@@ -85,9 +85,11 @@ class Graph:
         self.all_connections.append(connection)
         zone_1_neighbors: list[str] = self.adjacency[connection.zone_1]
         zone_1_neighbors.append(connection.zone_2)
+
         
-        zone_2_neighbors: list[str] = self.adjacency[connection.zone_2]
-        zone_2_neighbors.append(connection.zone_1)
+        ## Dijkstra algorithm only work with undirected graphs
+        # zone_2_neighbors: list[str] = self.adjacency[connection.zone_2]
+        # zone_2_neighbors.append(connection.zone_1)
 
     def connection_exist(self, connection: Connections) -> bool:
         if connection.zone_2 in self.adjacency[connection.zone_1]:
