@@ -1,17 +1,17 @@
 from models import Graph, Connections, Zone, ZoneType
 
 def main():
-    home = Zone("home", 0, 0)
-    roof1 = Zone("roof1", 3, 4, "restricted")
-    roof2 = Zone("roof2", 5, 7, max_drones=2)
-    goal = Zone("goal", 10, 10)
-    corridorA = Zone("corridorA", 2, 6, "blocked")
+    home = Zone(name="home", x_coordinate=0, y_coordinate=0)
+    roof1 = Zone(name="roof1", x_coordinate=3, y_coordinate=4, zone=ZoneType.RESTRICTED)
+    roof2 = Zone(name="roof2", x_coordinate=5, y_coordinate=7, max_drones=2)
+    goal = Zone(name="goal", x_coordinate=10, y_coordinate=10)
+    corridorA = Zone(name="corridorA", x_coordinate=2, y_coordinate=6, zone=ZoneType.BLOCKED)
 
-    home_roof = Connections(1, "home", "roof1")
-    roof_roof2 = Connections(1, "roof1", "roof2")
-    roof2_goal = Connections(1, "roof2", "goal")
-    home_corridorA = Connections(1, "home", "corridorA")
-    corridorA_home = Connections(1, "corridorA", "goal")
+    home_roof = Connections(max_link_capacity=1, zone_1="home", zone_2="roof1")
+    roof_roof2 = Connections(max_link_capacity=1, zone_1="roof1", zone_2="roof2")
+    roof2_goal = Connections(max_link_capacity=1, zone_1="roof2", zone_2="goal")
+    home_corridorA = Connections(max_link_capacity=1, zone_1="home", zone_2="corridorA")
+    corridorA_home = Connections(max_link_capacity=1, zone_1="corridorA", zone_2="goal")
 
     graph = Graph()
     graph.add_zone(home, is_start=True)
@@ -26,15 +26,18 @@ def main():
     graph.add_connection(home_corridorA)
     graph.add_connection(corridorA_home)
 
-    print(graph.get_neighhbors("roof1"))
+    print(graph.get_neighbors("roof1"))
     print(graph.movement_cost("roof1"))
-    print(graph.get_neighhbors("home"))
+    print(graph.get_neighbors("home"))
     print(graph.movement_cost("home"))
-    print(graph.get_neighhbors("roof2"))
+    print(graph.get_neighbors("roof2"))
     print(graph.movement_cost("roof2"))
-    print(graph.get_neighhbors("corridorA"))
-    print(graph.movement_cost("corridorA"))
-    print(graph.get_neighhbors("goal"))
+    print(graph.get_neighbors("corridorA"))
+    try:
+        print(graph.movement_cost("corridorA"))
+    except ValueError:
+        print("blocked zone correctly raises ValueError")
+    print(graph.get_neighbors("goal"))
     print(graph.movement_cost("goal"))
 if __name__ == "__main__":
     main()

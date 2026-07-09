@@ -8,7 +8,7 @@ def test_zone_creation() -> None:
         name="roof1",
         x_coordinate=3,
         y_coordinate=4,
-        zone_type=ZoneType.RESTRICTED,
+        zone=ZoneType.RESTRICTED,
         color="red",
         max_drones=1,
     )
@@ -16,7 +16,7 @@ def test_zone_creation() -> None:
     assert zone.name == "roof1"
     assert zone.x_coordinate == 3
     assert zone.y_coordinate == 4
-    assert zone.zone_type == ZoneType.RESTRICTED
+    assert zone.zone == ZoneType.RESTRICTED
     assert zone.color == "red"
     assert zone.max_drones == 1
 
@@ -40,8 +40,8 @@ def test_connection_creation() -> None:
 def test_graph_zone_storage() -> None:
     graph = Graph()
 
-    graph.add_zone(Zone("home", 0, 0), is_start=True)
-    graph.add_zone(Zone("goal", 10, 10), is_end=True)
+    graph.add_zone(Zone(name="home", x_coordinate=0, y_coordinate=0), is_start=True)
+    graph.add_zone(Zone(name="goal", x_coordinate=10, y_coordinate=10), is_end=True)
 
     assert "home" in graph.all_zones
     assert "goal" in graph.all_zones
@@ -54,12 +54,12 @@ def test_graph_zone_storage() -> None:
 def test_graph_connections_and_neighbors() -> None:
     graph = Graph()
 
-    graph.add_zone(Zone("home", 0, 0), is_start=True)
-    graph.add_zone(Zone("roof1", 3, 4))
-    graph.add_zone(Zone("goal", 10, 10), is_end=True)
+    graph.add_zone(Zone(name="home", x_coordinate=0, y_coordinate=0), is_start=True)
+    graph.add_zone(Zone(name="roof1", x_coordinate=3, y_coordinate=4))
+    graph.add_zone(Zone(name="goal", x_coordinate=10, y_coordinate=10), is_end=True)
 
-    graph.add_connection(Connections(1, "home", "roof1"))
-    graph.add_connection(Connections(1, "roof1", "goal"))
+    graph.add_connection(Connections(max_link_capacity=1, zone_1="home", zone_2="roof1"))
+    graph.add_connection(Connections(max_link_capacity=1, zone_1="roof1", zone_2="goal"))
 
     assert "roof1" in graph.get_neighbors("home")
     assert "home" in graph.get_neighbors("roof1")
@@ -72,12 +72,12 @@ def test_graph_connections_and_neighbors() -> None:
 def test_movement_costs() -> None:
     graph = Graph()
 
-    graph.add_zone(Zone("home", 0, 0), is_start=True)
-    graph.add_zone(Zone("normal_zone", 1, 1))
-    graph.add_zone(Zone("priority_zone", 2, 2, ZoneType.PRIORITY))
-    graph.add_zone(Zone("restricted_zone", 3, 3, ZoneType.RESTRICTED))
-    graph.add_zone(Zone("blocked_zone", 4, 4, ZoneType.BLOCKED))
-    graph.add_zone(Zone("goal", 10, 10), is_end=True)
+    graph.add_zone(Zone(name="home", x_coordinate=0, y_coordinate=0), is_start=True)
+    graph.add_zone(Zone(name="normal_zone", x_coordinate=1, y_coordinate=1))
+    graph.add_zone(Zone(name="priority_zone", x_coordinate=2, y_coordinate=2, zone=ZoneType.PRIORITY))
+    graph.add_zone(Zone(name="restricted_zone", x_coordinate=3, y_coordinate=3, zone=ZoneType.RESTRICTED))
+    graph.add_zone(Zone(name="blocked_zone", x_coordinate=4, y_coordinate=4, zone=ZoneType.BLOCKED))
+    graph.add_zone(Zone(name="goal", x_coordinate=10, y_coordinate=10), is_end=True)
 
     assert graph.movement_cost("normal_zone") == 1
     assert graph.movement_cost("priority_zone") == 1
@@ -96,10 +96,10 @@ def test_movement_costs() -> None:
 def test_duplicate_zone_error() -> None:
     graph = Graph()
 
-    graph.add_zone(Zone("home", 0, 0))
+    graph.add_zone(Zone(name="home", x_coordinate=0, y_coordinate=0))
 
     try:
-        graph.add_zone(Zone("home", 1, 1))
+        graph.add_zone(Zone(name="home", x_coordinate=1, y_coordinate=1))
     except ValueError:
         print("✅ Duplicate zone correctly raises an error")
     else:
@@ -109,10 +109,10 @@ def test_duplicate_zone_error() -> None:
 def test_unknown_connection_zone_error() -> None:
     graph = Graph()
 
-    graph.add_zone(Zone("home", 0, 0))
+    graph.add_zone(Zone(name="home", x_coordinate=0, y_coordinate=0))
 
     try:
-        graph.add_connection(Connections(1, "home", "missing_zone"))
+        graph.add_connection(Connections(max_link_capacity=1, zone_1="home", zone_2="missing_zone"))
     except ValueError:
         print("✅ Connection to unknown zone correctly raises an error")
     else:
@@ -122,13 +122,13 @@ def test_unknown_connection_zone_error() -> None:
 def test_duplicate_connection_error() -> None:
     graph = Graph()
 
-    graph.add_zone(Zone("home", 0, 0))
-    graph.add_zone(Zone("roof1", 3, 4))
+    graph.add_zone(Zone(name="home", x_coordinate=0, y_coordinate=0))
+    graph.add_zone(Zone(name="roof1", x_coordinate=3, y_coordinate=4))
 
-    graph.add_connection(Connections(1, "home", "roof1"))
+    graph.add_connection(Connections(max_link_capacity=1, zone_1="home", zone_2="roof1"))
 
     try:
-        graph.add_connection(Connections(1, "roof1", "home"))
+        graph.add_connection(Connections(max_link_capacity=1, zone_1="roof1", zone_2="home"))
     except ValueError:
         print("✅ Duplicate reversed connection correctly raises an error")
     else:
