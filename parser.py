@@ -104,6 +104,7 @@ class MapParser:
         line_number: int,
         is_start_or_end: bool = False,
     ) -> Zone:
+    
         body, metadata = self.split_metadata(line, line_number)
         zone_data: dict[str, Any] = {}
 
@@ -145,7 +146,7 @@ class MapParser:
                 raise ParseError(f"Line {line_number}: color value is missing")
             zone_data["color"] = metadata["color"]
 
-        if "max_drones" in metadata and not is_start_or_end:
+        if "max_drones" in metadata:
             zone_data["max_drones"] = self.parse_positive_int(
                 metadata["max_drones"], "max_drones", line_number
             )

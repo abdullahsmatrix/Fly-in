@@ -76,7 +76,7 @@ class PathFinder:
         ...
 
 
-    def rebuild_path(self, previous: dict[str, str | None], end: str) -> str:
+    def rebuild_path(self, previous: dict[str, str | None], end: str) -> list[str]:
         path: list[str] = []
         wokring_zone: str | None = end
         

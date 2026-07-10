@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "fly-in"
+version = "0.1.0"
+description = "Drone routing simulation project for the 42 curriculum."
+authors = ["amamun"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.1.1"
+flake8 = "^7.0"
+mypy = "^1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
