@@ -58,6 +58,8 @@ class Graph:
         self.adjacency: dict[str, list[str]] = defaultdict(list)
     
     def add_zone(self, zone: Zone, is_start: bool = False, is_end: bool = False) -> None:
+        """Adds a zone to the list"""
+        
         if zone.name in self.all_zones:
             raise ValueError(f"Zone {zone.name} already added")
         self.all_zones[zone.name] = zone
@@ -73,6 +75,8 @@ class Graph:
             self.end_zone = zone.name
     
     def add_connection(self, connection: Connections):
+        """ Adds connection to the connections list"""
+        
         if connection.zone_1 not in self.all_zones:
             raise ValueError(f"Unlnown zone: {connection.zone_1}")
 
@@ -99,12 +103,18 @@ class Graph:
     def get_neighbors(self, zone_name: str) -> list[str]:
         return self.adjacency[zone_name]
     
-    def movement_cost(self, destination_name: str) -> int:
+    def movement_cost(self, destination_name: str) -> int | float:
+        """Returns movement cost from a point to destination. 0.9 on priority
+        since it will automatically return lower cost and that path is considered priority
+        """
+
         destination: Zone = self.all_zones[destination_name]
         if destination.zone == ZoneType.BLOCKED:
             raise ValueError(f"Cannot move into the blocked zone: {destination_name}")
         if destination.zone == ZoneType.RESTRICTED:
             return 2
+        elif destination.zone == ZoneType.PRIORITY:
+            return 0.9
         return 1
     
     def validate_start_end_exist(self):

@@ -2,10 +2,13 @@ from collections import deque
 from models import Graph, ZoneType
 from heapq import heappop, heappush
 
+
+PRIORITY_BONUS: Final[float] = 0.001
 class PathFinder:
 
     def __init__(self, graph: Graph) -> None:
         self.graph = graph
+        all_paths: list[list] = []
     
     def find_shortest_path(self) -> list[str]:
         self.graph.validate_start_end_exist()
@@ -73,7 +76,17 @@ class PathFinder:
 
 
     def find_multiple_paths(max_paths):
-        ...
+        
+
+
+    def path_cost(self, path: list[str]) -> int | float:
+        """calculates total cost required for moving from start to end in a specfic path"""
+        total_cost = 0
+
+        for zone_name in path[1:]:
+            total_cost += self.graph.movement_cost(zone_name)
+
+    return total_cost
 
 
     def rebuild_path(self, previous: dict[str, str | None], end: str) -> list[str]:
