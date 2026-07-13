@@ -1,6 +1,7 @@
 """Manual tester for Phase 1 models and Graph."""
 
-from models import Connections, Zone, ZoneType, Graph
+from graph import Graph
+from models import Connections, Zone, ZoneType
 
 
 def test_zone_creation() -> None:

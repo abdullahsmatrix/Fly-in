@@ -1,4 +1,5 @@
-from models import Graph, Connections, Zone, ZoneType
+from graph import Graph
+from models import Connections, Zone, ZoneType
 
 def main():
     home = Zone(name="home", x_coordinate=0, y_coordinate=0)

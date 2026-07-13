@@ -9,7 +9,9 @@ def main():
     graph = map_parser.parse_map(file_path)
 
     path_finder = PathFinder(graph)
-    print(path_finder.find_cheapest_path())
+    paths: list[str] = path_finder.find_multiple_paths()
+    
+
 
 if __name__ == "__main__":
     main()

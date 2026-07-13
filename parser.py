@@ -1,6 +1,7 @@
 from typing import Any
 
-from models import Connections, Graph, Zone, ZoneType
+from graph import Graph
+from models import Connections, Zone, ZoneType
 
 
 class ParseError(Exception):
