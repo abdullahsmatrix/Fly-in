@@ -12,16 +12,17 @@ class ParseError(Exception):
 class MapParser:
     """Parse and validate Fly-in map files."""
 
-    def __init__(self) -> None:
+    def __init__(self, path: str) -> None:
+        self.path = path
         self.graph = Graph()
         self.nb_drones: int | None = None
         self.connection_keys: set[tuple[str, str]] = set()
 
-    def parse_map(self, map_path: str) -> Graph:
+    def parse_map(self) -> Graph:
         """Parse config from map"""
         first_line_checked: bool = False
         try:
-            with open(map_path, "r") as file:
+            with open(self.path, "r") as file:
                 for line_number, raw_line in enumerate(file, 1):
                     line: str = self.clean_line(raw_line)
 
