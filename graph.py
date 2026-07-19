@@ -61,6 +61,27 @@ class Graph:
     def get_neighbors(self, zone_name: str) -> list[str]:
         return self.adjacency[zone_name]
     
+    def get_connection(self, zone_a:str, zone_b:str):
+        """Returns the connection object between two zones.
+    
+        Args:
+            zone_1: Name of the first zone
+            zone_2: Name of the second zone
+
+        Returns:
+            Connections object if connection exists
+
+        Raises:
+            ValueError: If no connection exists between the zones
+        """
+        
+        for connection in self.all_connections:
+            if(connection.zone_1 == zone_a and connection.zone_2 == zone_b) or\
+              (connection.zone_2 == zone_a and connection.zone_1 == zone_b):
+                return connection
+        
+        raise ValueError(f"No Conenction exist! between {zone_a} and {zone_b}")
+
     def movement_cost(self, destination_name: str) -> int | float:
         """Returns movement cost from a point to destination. 0.9 on priority
         since it will automatically return lower cost and that path is considered priority
