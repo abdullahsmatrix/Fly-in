@@ -1,3 +1,6 @@
+from models import Drone, Zone, ZoneType, Connections
+from graph import Graph
+
 class Simulator:
     def __init__(self, drones: list[Drone], graph: Graph):
         self.active_drones = drones
@@ -6,6 +9,10 @@ class Simulator:
         self.delivered_drones: list[Drone] = []
         self.zone_occupancy: dict[str, int] = {}
         self.connection_occupancy: dict[tuple[str, str], int] = {}
+
+    def _connection_key(self, zone_a: str, zone_b: str) -> tuple[str, str]:
+        """Create a direction-agnostic key for a bidirectional connection."""
+        return tuple(sorted((zone_a, zone_b)))
     
 
     def initialize_occupancy(self) -> None:
@@ -14,10 +21,12 @@ class Simulator:
         self.zone_occupancy[self.graph.start_zone] = len(self.active_drones)
 
         for connection in self.graph.all_connections:
-            connection_key = (connection.zone_1, connection.zone_2)
+            connection_key = self._connection_key(connection.zone_1, connection.zone_2)
             self.connection_occupancy[connection_key] = 0
 
     def get_next_move(self, drone: Drone) -> str:
+        if drone.path_index + 1 >= len(drone.assigned_path):
+            raise ValueError(f"Drone {drone.drone_id} has no next move left on assigned path")
         return drone.assigned_path[drone.path_index + 1]
 
     def can_move(self, drone: Drone) -> bool:
@@ -28,7 +37,8 @@ class Simulator:
             return False
         if self.zone_occupancy[next_zone] >= self.graph.all_zones[next_zone].max_drones:
             return False
-        if self.connection_occupancy[connection_obj.zone_1, connection_obj.zone_2] >= connection_obj.max_link_capacity:
+        connection_key = self._connection_key(connection_obj.zone_1, connection_obj.zone_2)
+        if self.connection_occupancy[connection_key] >= connection_obj.max_link_capacity:
             return False
         return True
 
@@ -37,7 +47,7 @@ class Simulator:
         self.zone_occupancy[drone.current_zone] -= 1
         self.zone_occupancy[next_zone] += 1
         
-        connection_key = (drone.current_zone, next_zone)
+        connection_key = self._connection_key(drone.current_zone, next_zone)
         self.connection_occupancy[connection_key] += 1
 
         drone.current_zone = next_zone

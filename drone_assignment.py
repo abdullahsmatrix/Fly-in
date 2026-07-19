@@ -37,7 +37,8 @@ class DroneAssignment:
                     best_path_index = j
             
             self.drone_objects[i].assigned_path =  self.paths[best_path_index]
-            self.drone_objects[i].path_index = best_path_index
+            # path_index tracks position inside assigned_path, so each drone starts at 0 (start zone).
+            self.drone_objects[i].path_index = 0
             self.path_usage[best_path_index] += 1 
 
 
