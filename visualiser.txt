@@ -1,0 +1,427 @@
+import pygame
+from graph import Graph
+from models import ZoneType
+
+# Color Constants
+class Colors:
+    # Zone Types
+    NORMAL = (70, 130, 180)      # Steel Blue
+    RESTRICTED = (255, 140, 0)    # Dark Orange
+    PRIORITY = (50, 205, 50)      # Lime Green
+    BLOCKED = (220, 20, 60)       # Crimson Red
+    
+    # Drone Colors (cycle through)
+    DRONE_PALETTE = [
+        (255, 0, 0),       # Red
+        (0, 0, 255),       # Blue
+        (255, 255, 0),     # Yellow
+        (0, 255, 0),       # Green
+        (255, 0, 255),     # Magenta
+        (0, 255, 255),     # Cyan
+    ]
+    
+    # Occupancy Heatmap
+    EMPTY = (100, 255, 100)        # Light Green
+    HALF_FULL = (255, 255, 100)    # Light Yellow
+    FULL = (255, 100, 100)         # Light Red
+    
+    # UI
+    WHITE = (255, 255, 255)
+    BLACK = (0, 0, 0)
+    DARK_GRAY = (30, 30, 30)
+    LIGHT_GRAY = (200, 200, 200)
+
+
+class PyGameVisualizer:
+    def __init__(self, graph: Graph, screen_width: int = 1200, screen_height: int = 800):
+        """
+        Initialize the visualizer with graph data.
+        
+        Args:
+            graph: Graph object containing zones and connections
+            screen_width: Window width in pixels
+            screen_height: Window height in pixels
+        """
+        self.graph = graph
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        
+        # Padding from edges
+        self.padding = 50
+        
+        # Calculate world bounds (min/max zone coordinates)
+        self.world_min_x = min(zone.x_coordinate for zone in graph.all_zones.values())
+        self.world_max_x = max(zone.x_coordinate for zone in graph.all_zones.values())
+        self.world_min_y = min(zone.y_coordinate for zone in graph.all_zones.values())
+        self.world_max_y = max(zone.y_coordinate for zone in graph.all_zones.values())
+        
+        # Calculate scaling factors
+        world_width = self.world_max_x - self.world_min_x if self.world_max_x != self.world_min_x else 1
+        world_height = self.world_max_y - self.world_min_y if self.world_max_y != self.world_min_y else 1
+        
+        available_width = screen_width - 2 * self.padding
+        available_height = screen_height - 2 * self.padding
+        
+        self.scale_x = available_width / world_width
+        self.scale_y = available_height / world_height
+        
+        # Use uniform scaling to avoid distortion
+        self.scale = min(self.scale_x, self.scale_y)
+        
+        # Pygame objects (initialized in setup_display)
+        self.screen = None
+        self.clock = None
+        self.font_small = None
+        self.font_large = None
+        self.font_title = None
+        
+        # Zone radius for rendering
+        self.zone_radius = 15
+        
+        # Drone radius for rendering
+        self.drone_radius = 6
+    
+    def setup_display(self) -> None:
+        """Initialize pygame window and fonts."""
+        pygame.init()
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
+        pygame.display.set_caption("Fly-in: Drone Fleet Routing Simulator")
+        self.clock = pygame.time.Clock()
+        
+        # Font setup
+        self.font_small = pygame.font.Font(None, 24)   # Zone names, labels
+        self.font_large = pygame.font.Font(None, 32)   # Turn counter, stats
+        self.font_title = pygame.font.Font(None, 48)   # Title
+    
+    def world_to_screen(self, world_x: float, world_y: float) -> tuple[int, int]:
+        """
+        Convert world coordinates (zone coordinates) to screen pixels.
+        
+        Args:
+            world_x: X coordinate in world space
+            world_y: Y coordinate in world space
+        
+        Returns:
+            (screen_x, screen_y) tuple in pixels
+        """
+        # Normalize to [0, 1]
+        norm_x = (world_x - self.world_min_x) / (self.world_max_x - self.world_min_x) if self.world_max_x != self.world_min_x else 0.5
+        norm_y = (world_y - self.world_min_y) / (self.world_max_y - self.world_min_y) if self.world_max_y != self.world_min_y else 0.5
+        
+        # Apply padding and scale
+        screen_x = int(self.padding + norm_x * (self.screen_width - 2 * self.padding))
+        screen_y = int(self.padding + norm_y * (self.screen_height - 2 * self.padding))
+        
+        return (screen_x, screen_y)
+    
+    def get_zone_color(self, zone_type: ZoneType) -> tuple[int, int, int]:
+        """Get RGB color for a zone type."""
+        color_map = {
+            ZoneType.NORMAL: Colors.NORMAL,
+            ZoneType.RESTRICTED: Colors.RESTRICTED,
+            ZoneType.PRIORITY: Colors.PRIORITY,
+            ZoneType.BLOCKED: Colors.BLOCKED,
+        }
+        return color_map.get(zone_type, Colors.NORMAL)
+    
+    def get_drone_color(self, drone_id: int) -> tuple[int, int, int]:
+        """Get unique RGB color for a drone ID."""
+        return Colors.DRONE_PALETTE[drone_id % len(Colors.DRONE_PALETTE)]
+    
+    def get_occupancy_color(self, occupancy: int, capacity: int) -> tuple[int, int, int]:
+        """
+        Get color based on occupancy level (heatmap).
+        
+        Args:
+            occupancy: Current number of drones
+            capacity: Maximum capacity
+        
+        Returns:
+            RGB color tuple
+        """
+        if capacity <= 0:
+            return Colors.EMPTY
+        
+        ratio = occupancy / capacity
+        
+        if ratio <= 0.5:
+            # Interpolate between EMPTY (green) and HALF_FULL (yellow)
+            t = ratio * 2  # [0, 1]
+            r = int(Colors.EMPTY[0] * (1 - t) + Colors.HALF_FULL[0] * t)
+            g = int(Colors.EMPTY[1] * (1 - t) + Colors.HALF_FULL[1] * t)
+            b = int(Colors.EMPTY[2] * (1 - t) + Colors.HALF_FULL[2] * t)
+        else:
+            # Interpolate between HALF_FULL (yellow) and FULL (red)
+            t = (ratio - 0.5) * 2  # [0, 1]
+            r = int(Colors.HALF_FULL[0] * (1 - t) + Colors.FULL[0] * t)
+            g = int(Colors.HALF_FULL[1] * (1 - t) + Colors.FULL[1] * t)
+            b = int(Colors.HALF_FULL[2] * (1 - t) + Colors.FULL[2] * t)
+        
+        return (r, g, b)
+    
+    def draw_zones(self, zone_occupancy: dict[str, int]) -> None:
+        """
+        Draw all zones on the map with color coding by type and occupancy heatmap.
+        
+        Args:
+            zone_occupancy: Dict mapping zone name to current drone count
+        """
+        for zone_name, zone in self.graph.all_zones.items():
+            # Get screen position
+            screen_x, screen_y = self.world_to_screen(zone.x_coordinate, zone.y_coordinate)
+            
+            # Get zone color
+            zone_color = self.get_zone_color(zone.zone)
+            
+            # Draw zone circle
+            pygame.draw.circle(self.screen, zone_color, (screen_x, screen_y), self.zone_radius)
+            
+            # Draw occupancy heatmap as border
+            occupancy = zone_occupancy.get(zone_name, 0)
+            occupancy_color = self.get_occupancy_color(occupancy, zone.max_drones)
+            pygame.draw.circle(self.screen, occupancy_color, (screen_x, screen_y), self.zone_radius + 2, 3)
+            
+            # Draw zone name label below
+            label = self.font_small.render(zone_name, True, Colors.WHITE)
+            label_rect = label.get_rect(center=(screen_x, screen_y + self.zone_radius + 15))
+            self.screen.blit(label, label_rect)
+            
+            # Draw occupancy count inside zone
+            occupancy_text = self.font_small.render(f"{occupancy}/{zone.max_drones}", True, Colors.BLACK)
+            occupancy_rect = occupancy_text.get_rect(center=(screen_x, screen_y))
+            self.screen.blit(occupancy_text, occupancy_rect)
+    
+    def draw_connections(self, connection_occupancy: dict[tuple[str, str], int]) -> None:
+        """
+        Draw all connections (edges) between zones.
+        
+        Args:
+            connection_occupancy: Dict mapping (zone1, zone2) to current usage
+        """
+        for connection in self.graph.all_connections:
+            zone_a = connection.zone_1
+            zone_b = connection.zone_2
+            
+            # Get screen positions
+            zone_a_obj = self.graph.all_zones[zone_a]
+            zone_b_obj = self.graph.all_zones[zone_b]
+            screen_a = self.world_to_screen(zone_a_obj.x_coordinate, zone_a_obj.y_coordinate)
+            screen_b = self.world_to_screen(zone_b_obj.x_coordinate, zone_b_obj.y_coordinate)
+            
+            # Get occupancy for this connection
+            connection_key = tuple(sorted([zone_a, zone_b]))
+            occupancy = connection_occupancy.get(connection_key, 0)
+            
+            # Color based on occupancy heatmap
+            line_color = self.get_occupancy_color(occupancy, connection.max_link_capacity)
+            
+            # Draw line
+            pygame.draw.line(self.screen, line_color, screen_a, screen_b, 2)
+            
+            # Draw capacity label at midpoint
+            mid_x = (screen_a[0] + screen_b[0]) // 2
+            mid_y = (screen_a[1] + screen_b[1]) // 2
+            capacity_text = self.font_small.render(
+                f"{occupancy}/{connection.max_link_capacity}", 
+                True, 
+                Colors.WHITE
+            )
+            capacity_rect = capacity_text.get_rect(center=(mid_x, mid_y))
+            self.screen.blit(capacity_text, capacity_rect)
+    
+    def draw_drones(self, active_drones: list) -> None:
+        """
+        Draw all active drones as colored circles at their current zones.
+        
+        Args:
+            active_drones: List of Drone objects currently in transit/waiting
+        """
+        # Group drones by current zone to handle stacking
+        drones_by_zone: dict[str, list] = {}
+        for drone in active_drones:
+            zone = drone.current_zone
+            if zone not in drones_by_zone:
+                drones_by_zone[zone] = []
+            drones_by_zone[zone].append(drone)
+        
+        # Draw drones with offset if multiple in same zone
+        for zone_name, drones in drones_by_zone.items():
+            zone = self.graph.all_zones[zone_name]
+            screen_x, screen_y = self.world_to_screen(zone.x_coordinate, zone.y_coordinate)
+            
+            # Calculate offsets for stacked drones
+            num_drones = len(drones)
+            if num_drones == 1:
+                offsets = [(0, 0)]
+            elif num_drones == 2:
+                offsets = [(-8, 0), (8, 0)]
+            elif num_drones == 3:
+                offsets = [(-8, -6), (8, -6), (0, 8)]
+            elif num_drones == 4:
+                offsets = [(-8, -6), (8, -6), (-8, 8), (8, 8)]
+            else:
+                # For 5+ drones, create circular arrangement
+                import math
+                offsets = []
+                for i in range(num_drones):
+                    angle = (2 * math.pi * i) / num_drones
+                    offset_x = int(10 * math.cos(angle))
+                    offset_y = int(10 * math.sin(angle))
+                    offsets.append((offset_x, offset_y))
+            
+            # Draw each drone with its ID
+            for drone, offset in zip(drones, offsets):
+                drone_x = screen_x + offset[0]
+                drone_y = screen_y + offset[1]
+                
+                # Get drone color
+                drone_color = self.get_drone_color(drone.drone_id)
+                
+                # Draw drone circle
+                pygame.draw.circle(self.screen, drone_color, (drone_x, drone_y), self.drone_radius)
+                
+                # Draw drone ID label
+                drone_id_text = self.font_small.render(f"D{drone.drone_id}", True, Colors.BLACK)
+                drone_id_rect = drone_id_text.get_rect(center=(drone_x, drone_y))
+                self.screen.blit(drone_id_text, drone_id_rect)
+    
+    def draw_hud(self, turn_num: int, active_count: int, delivered_count: int) -> None:
+        """
+        Draw heads-up display: turn counter, active drones, delivered count.
+        
+        Args:
+            turn_num: Current turn number
+            active_count: Number of drones still in transit
+            delivered_count: Number of drones that reached goal
+        """
+        # Semi-transparent overlay for readability
+        overlay = pygame.Surface((300, 120))
+        overlay.set_alpha(200)
+        overlay.fill(Colors.DARK_GRAY)
+        self.screen.blit(overlay, (10, 10))
+        
+        # Turn counter
+        turn_text = self.font_large.render(f"Turn: {turn_num}", True, Colors.WHITE)
+        self.screen.blit(turn_text, (20, 20))
+        
+        # Active drones
+        active_text = self.font_small.render(f"Active: {active_count}", True, Colors.LIGHT_GRAY)
+        self.screen.blit(active_text, (20, 60))
+        
+        # Delivered drones
+        delivered_text = self.font_small.render(f"Delivered: {delivered_count}", True, Colors.LIGHT_GRAY)
+        self.screen.blit(delivered_text, (20, 85))
+    
+    def handle_events(self) -> bool:
+        """
+        Handle pygame events (quit, etc.).
+        
+        Returns:
+            False if user closed window or pressed ESC, True otherwise
+        """
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return False
+        return True
+    
+    def render_turn(self, active_drones: list, turn_num: int, zone_occupancy: dict[str, int], 
+                    connection_occupancy: dict[tuple[str, str], int], delivered_count: int) -> bool:
+        """
+        Render a single turn of the simulation.
+        
+        Args:
+            active_drones: List of Drone objects still in transit
+            turn_num: Current turn number
+            zone_occupancy: Dict mapping zone name to drone count
+            connection_occupancy: Dict mapping (zone1, zone2) to usage
+            delivered_count: Number of delivered drones
+        
+        Returns:
+            False if user wants to quit, True to continue
+        """
+        # Handle events first
+        if not self.handle_events():
+            return False
+        
+        # Clear screen
+        self.screen.fill(Colors.BLACK)
+        
+        # Draw map elements
+        self.draw_connections(connection_occupancy)
+        self.draw_zones(zone_occupancy)
+        self.draw_drones(active_drones)
+        
+        # Draw HUD
+        self.draw_hud(turn_num, len(active_drones), delivered_count)
+        
+        # Update display
+        pygame.display.flip()
+        
+        # Control frame rate (10 turns per second = 100ms per turn)
+        self.clock.tick(10)
+        
+        return True
+    
+    def show_results(self, total_turns: int, total_drones: int, delivered_drones: int) -> None:
+        """
+        Display final results screen and wait for user to close.
+        
+        Args:
+            total_turns: Total number of turns the simulation took
+            total_drones: Total number of drones
+            delivered_drones: Number of drones that were delivered
+        """
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.set_alpha(220)
+        overlay.fill(Colors.DARK_GRAY)
+        self.screen.blit(overlay, (0, 0))
+        
+        # Title
+        title = self.font_title.render("SIMULATION COMPLETE", True, Colors.WHITE)
+        title_rect = title.get_rect(center=(self.screen_width // 2, 100))
+        self.screen.blit(title, title_rect)
+        
+        # Results
+        results_y = 250
+        line_height = 50
+        
+        results_text = [
+            f"Total Turns: {total_turns}",
+            f"Total Drones: {total_drones}",
+            f"Delivered: {delivered_drones}/{total_drones}",
+            f"Efficiency: {(delivered_drones / total_drones * 100):.1f}%",
+        ]
+        
+        for text in results_text:
+            result_surface = self.font_large.render(text, True, Colors.WHITE)
+            result_rect = result_surface.get_rect(center=(self.screen_width // 2, results_y))
+            self.screen.blit(result_surface, result_rect)
+            results_y += line_height
+        
+        # Instructions
+        results_y += 50
+        instructions = self.font_small.render("Press ESC or close window to exit", True, Colors.LIGHT_GRAY)
+        instructions_rect = instructions.get_rect(center=(self.screen_width // 2, results_y))
+        self.screen.blit(instructions, instructions_rect)
+        
+        pygame.display.flip()
+        
+        # Wait for user to close window or press ESC
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    waiting = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        waiting = False
+            self.clock.tick(10)
+    
+    def quit(self) -> None:
+        """Clean up pygame resources."""
+        if self.screen:
+            pygame.quit()
