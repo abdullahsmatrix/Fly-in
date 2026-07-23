@@ -32,6 +32,7 @@ class Drone:
     drone_id: int
     current_zone: str
     path_index: int
+    restricted_exit_turn: int | None = None
     assigned_path: list = field(default_factory=list)
 
 

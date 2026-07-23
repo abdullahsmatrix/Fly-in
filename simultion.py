@@ -1,14 +1,16 @@
 from models import Drone, Zone, ZoneType, Connections
 from graph import Graph
 
+MAX_TURNS = 100000
 class Simulator:
     def __init__(self, drones: list[Drone], graph: Graph):
         self.active_drones = drones
         self.graph = graph
-        self.current_turn = 0
+        self.turn_counter = 0
         self.delivered_drones: list[Drone] = []
         self.zone_occupancy: dict[str, int] = {}
         self.connection_occupancy: dict[tuple[str, str], int] = {}
+        self.consecutive_no_move_turns: int = 0
 
     def _connection_key(self, zone_a: str, zone_b: str) -> tuple[str, str]:
         """Create a direction-agnostic key for a bidirectional connection."""
@@ -76,19 +78,31 @@ class Simulator:
                 next_zone = self.get_next_move(drone)
                 self.move_drone(drone)
                 moves.append(f"D{drone.drone_id}-{next_zone}")
+    
+        # Check for stall after all drones are processed
+        if len(moves) == 0:
+                self.consecutive_no_move_turns += 1
+                if self.consecutive_no_move_turns >= 3:
+                    raise RuntimeError("STALL detected! This is a deadlock!")
+        else:
+            self.consecutive_no_move_turns = 0
         
         # Output the turn
         if moves:
             print(' '.join(moves))
         
         # Increment turn counter
-        self.current_turn += 1
+        self.turn_counter += 1
 
     def run_simulation(self) -> None:
         self.initialize_occupancy()
-    
         while self.active_drones:
+            if self.turn_counter >= MAX_TURNS:
+                raise RuntimeError(
+                    f"Simulation exceeded maximum turns {MAX_TURNS}. "
+                    f"{len(self.active_drones)} drones still undelivered"
+                )
             self.run_turn()
-        print(f"All drones delivered in {self.current_turn} turns")
+        print(f"All drones delivered in {self.turn_counter} turns")
     
 

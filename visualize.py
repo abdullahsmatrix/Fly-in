@@ -19,7 +19,7 @@ FONT_PATH = "resources/superstar_memesbruh03.ttf"
 
 
 class PyGameVisualizer:
-    def __init__(self, screen_width=1400, screen_height=900):
+    def __init__(self, screen_width=1920, screen_height=1200):
         # initialize pygame
         pygame.init()
 

@@ -1,6 +1,7 @@
 from collections import defaultdict
-
+from collections import deque
 from models import Connections, Zone, ZoneType
+from parser import ParseError
 
 
 class Graph:
@@ -102,3 +103,32 @@ class Graph:
 
         if self.end_zone is None:
             raise ValueError("Missing end_hub")
+    
+
+    def is_connected(self) -> bool:
+        """
+        check if start zone can reach end zone.
+        Uses BFS to validate connectivity.
+        
+        Returns:
+        True is start -> end is reachable. False otherwise.
+        """
+
+        self.validate_start_end_exist()
+        visited = set()
+        visited.add(self.start_zone)
+        queue = deque([self.start_zone])
+        
+        while queue:
+            current_zone:str = queue.popleft()
+            if current_zone == self.end_zone:
+                return True
+            
+            current_zone_neighbors: list[str] = self.get_neighbors(current_zone)
+
+            for neighbor in current_zone_neighbors:
+                neighbor_zone = self.all_zones[neighbor]
+                if neighbor not in visited and neighbor_zone.zone != ZoneType.BLOCKED:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+        return False

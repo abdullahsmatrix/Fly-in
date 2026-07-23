@@ -76,6 +76,10 @@ class MapParser:
             self.graph.validate_start_end_exist()
         except ValueError as err:
             raise ParseError(f"Line EOF: {err}") from err
+        
+        if not self.graph.is_connected():
+            raise ParseError("No valid path exist from start zone to end!")
+
         return self.graph
 
     def clean_line(self, raw_line: str) -> str:
